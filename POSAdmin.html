@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS System - Bakery Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Add Toastify CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#8B2635',
+                        secondary: '#A53860',
+                        light: '#fef5f8',
+                        dark: '#faf0e6'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .sidebar-transition {
+            transition: width 0.3s ease;
+        }
+
+        .main-content-shift {
+            transition: margin-left 0.3s ease;
+        }
+
+        .modal {
+            display: none;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .scanner-animation {
+            animation: scan 2s infinite;
+        }
+
+        @keyframes scan {
+
+            0%,
+            100% {
+                transform: scaleX(1);
+            }
+
+            50% {
+                transform: scaleX(1.1);
+            }
+        }
+
+        .receipt-print {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            width: 80mm;
+            max-width: 80mm;
+            padding: 10mm;
+            box-sizing: border-box;
+        }
+
+        .product-card {
+            transition: all 0.2s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        @media print {
+            @page {
+                size: 80mm auto;
+                margin: 0;
+            }
+
+            body * {
+                visibility: hidden;
+            }
+
+            #printArea,
+            #printArea * {
+                visibility: visible;
+            }
+
+            #printArea {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 80mm;
+                font-size: 12px;
+                margin: 0;
+                padding: 10mm;
+            }
+        }
+
+        /* Existing styles */
+        .loader {
+            display: none;
+            border: 6px solid #f3f3f3;
+            /* Slightly darker gray for contrast */
+            border-top: 6px solid #8B2635;
+            /* Primary color */
+            border-radius: 50%;
+            width: 40px;
+            /* Larger size */
+            height: 40px;
+            animation: spin 0.8s linear infinite;
+            /* Faster animation */
+            margin: 10px auto;
+            /* Centered with more spacing */
+            position: relative;
+            z-index: 10;
+            /* Ensure loader is above dimmed content */
+        }
+
+        .loader.show {
+            display: block;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .modal-content-disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 overflow-x-hidden">
+    <!-- Desktop Sidebar -->
+    <div class="fixed left-0 top-0 bg-dark text-white w-64 h-full flex-shrink-0 hidden md:flex flex-col sidebar-transition z-30"
+        id="sidebar">
+        <div class="p-4 border-b border-gray-700">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-xl font-bold text-primary">TheHome Bakery</h2>
+                    <p class="text-sm text-gray-500">by Anjali</p>
+                </div>
+            </div>
+        </div>
+        <nav class="flex-1 p-4 overflow-y-auto">
+            <ul class="space-y-2">
+                <li>
+                    <a href="#"
+                        class="flex items-center space-x-3 p-3 rounded-lg bg-primary text-dark font-medium transition-colors group"
+                        title="POS System">
+                        <i class="fas fa-cash-register min-w-[20px] flex-shrink-0"></i>
+                        <span class="sidebar-text">POS System</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="p-4 border-t border-gray-700" >
+            <a href="/login.html"
+                id="logoutBtn"
+                class="hover:text-white text-gray-800 flex items-center space-x-3 p-3 rounded-lg border border-gray-500 hover:bg-primary transition-colors group"
+                title="Logout">
+                <i class="fas fa-sign-out-alt min-w-[20px] flex-shrink-0"></i>
+                <span class="sidebar-text">Logout</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Mobile Sidebar Overlay -->
+    <div class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden" id="sidebarOverlay" style="display: none;">
+        <div class="bg-dark text-white w-64 h-full mobile-sidebar" id="mobileSidebarContent">
+            <div class="p-4 border-b border-gray-700">
+                <div class="flex items-center justify-between">
+                    <span class="text-xl font-bold">Bakery Admin</span>
+                    <button class="text-white hover:text-gray-300" id="closeMobileSidebar">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <nav class="p-4 overflow-y-auto h-full">
+                <ul class="space-y-2">
+                    <li><a href="#"
+                            class="flex items-center space-x-3 p-3 rounded-lg bg-primary text-dark font-medium mobile-nav-link"><i
+                                class="fas fa-cash-register"></i><span>POS System</span></a></li>
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="flex-1 ml-0 md:ml-64 main-content-shift" id="mainContent">
+        <!-- Top Navbar -->
+        <nav class="bg-white shadow-sm border-b px-6 py-4 sticky top-0 z-20">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-4">
+                    <button class="md:hidden text-gray-600 hover:text-gray-800" id="mobileToggleSidebar">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <h1 class="text-2xl font-bold text-gray-800">POS System</h1>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-gray-600">Cashier: Admin</span>
+                    <button class="text-gray-600 hover:text-gray-800">
+                        <i class="fas fa-bell text-xl"></i>
+                    </button>
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                        <i class="fas fa-user text-white text-sm"></i>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main POS Interface -->
+        <div class="p-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Product Search & Display -->
+                <div class="lg:col-span-2 bg-white rounded-lg shadow-sm p-5">
+                    <div class="mb-6">
+                        <div class="flex justify-between">
+                            <h2 class="text-xl font-semibold mb-4 text-gray-800">Product Search</h2>
+                            <button
+                                class="bg-primary text-dark px-4 py-2 rounded-lg font-medium hover:bg-secondary hover:text-white transition-colors"
+                                id="newSaleBtn">
+                                <i class="fas fa-plus mr-2"></i>Add Product
+                            </button>
+                        </div>
+                        <!-- Search Bar -->
+                        <div class="relative mb-4">
+                            <input type="text" id="productSearch" placeholder="Search bakery products by name or SKU..."
+                                class="w-[60%] p-3 pl-10 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                            <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
+                        </div>
+
+                        <!-- Category Filters -->
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            <button
+                                class="category-btn active bg-primary text-dark px-4 py-2 rounded-lg transition hover:bg-secondary hover:text-white font-medium"
+                                data-category="all">
+                                All
+                            </button>
+                            <button
+                                class="category-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition hover:bg-gray-300"
+                                data-category="CAKE">
+                                Cakes
+                            </button>
+                            <button
+                                class="category-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition hover:bg-gray-300"
+                                data-category="PASTRY">
+                                Pastries
+                            </button>
+                            <button
+                                class="category-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition hover:bg-gray-300"
+                                data-category="COOKIE">
+                                Cookies
+                            </button>
+                            <button
+                                class="category-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition hover:bg-gray-300"
+                                data-category="DESSERT">
+                                Desserts
+                            </button>
+                            <button
+                                class="category-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition hover:bg-gray-300"
+                                data-category="BEVERAGE">
+                                Beverages
+                            </button>
+                            <button
+                                class="category-btn bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition hover:bg-gray-300"
+                                data-category="SNACK">
+                                Snacks
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Products Grid -->
+                    <div id="productsGrid"
+                        class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 h-[600px] overflow-y-auto">
+                        <!-- Products will be dynamically loaded here -->
+                    </div>
+                </div>
+
+                <!-- Shopping Cart & Payment -->
+                <div class="bg-white rounded-lg shadow-sm p-6">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Shopping Cart</h2>
+
+                    <!-- Cart Items -->
+                    <div id="cartItems" class="mb-6 max-h-64 overflow-y-auto">
+                        <div class="text-center text-gray-500 py-8">
+                            <i class="fas fa-shopping-cart text-4xl mb-2"></i>
+                            <p>Cart is empty</p>
+                        </div>
+                    </div>
+
+                    <!-- Order Summary -->
+                    <div class="border-t pt-4 mb-6">
+                        <div class="flex justify-between mb-2">
+                            <span>Subtotal:</span>
+                            <span id="subtotal">&#8377;0.00</span>
+                        </div>
+                        <div class="flex justify-between mb-2">
+                            <span>Discount:</span>
+                            <span id="discount" class="text-success">&#8377;0.00</span>
+                        </div>
+                        <div class="border-t pt-2 flex justify-between font-bold text-lg">
+                            <span>Total:</span>
+                            <span id="total" class="text-primary">&#8377;0.00</span>
+                        </div>
+                    </div>
+
+                    <!-- Customer Details -->
+                    <div class="mb-6">
+                        <input type="text" id="customerName" placeholder="Customer Name"
+                            class="w-full p-3 border border-gray-300 rounded-lg mb-2">
+                        <input type="text" id="customerMobile" placeholder="Mobile Number"
+                            class="w-full p-3 border border-gray-300 rounded-lg mb-2">
+                        <input type="text" id="tableNumber" placeholder="Table Number"
+                            class="w-full p-3 border border-gray-300 rounded-lg">
+                    </div>
+
+                    <!-- Payment Methods -->
+                    <div class="mb-6">
+                        <h3 class="font-semibold mb-3">Payment Method</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button
+                                class="payment-method active bg-primary text-dark p-3 rounded-lg flex flex-col items-center transition hover:bg-secondary hover:text-white"
+                                data-method="cash">
+                                <i class="fas fa-money-bill-wave text-xl mb-1"></i>
+                                <span class="text-sm font-medium">Cash</span>
+                            </button>
+                            <button
+                                class="payment-method bg-gray-200 text-gray-700 p-3 rounded-lg flex flex-col items-center transition hover:bg-gray-300"
+                                data-method="card">
+                                <i class="fas fa-credit-card text-xl mb-1"></i>
+                                <span class="text-sm">Card</span>
+                            </button>
+                            <button
+                                class="payment-method bg-gray-200 text-gray-700 p-3 rounded-lg flex flex-col items-center transition hover:bg-gray-300"
+                                data-method="mobile">
+                                <i class="fas fa-mobile-alt text-xl mb-1"></i>
+                                <span class="text-sm">Mobile Pay</span>
+                            </button>
+                            <button
+                                class="payment-method bg-gray-200 text-gray-700 p-3 rounded-lg flex flex-col items-center transition hover:bg-gray-300"
+                                data-method="upi">
+                                <i class="fab fa-google-pay text-xl mb-1"></i>
+                                <span class="text-sm">UPI</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="space-y-3">
+                        <button id="processPayment"
+                            class="w-full bg-success text-white p-4 rounded-lg font-semibold bg-green-700 transition hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            disabled>
+                            <i class="fas fa-credit-card mr-2"></i>Process Payment
+                        </button>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="clearCart"
+                                class="bg-danger text-white p-2 rounded-lg bg-red-700 hover:bg-red-300 transition">
+                                <i class="fas fa-trash mr-1"></i>Clear
+                            </button>
+                            <button id="printReceipt" class="bg-dark text-white p-2 rounded-lg bg-gray-700 transition">
+                                <i class="fas fa-print mr-1"></i>Receipt
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payment Processing Modal -->
+    <div id="paymentModal" class="fixed inset-0 bg-black bg-opacity-50 modal items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="text-center">
+                <div id="paymentSpinner" class="mb-4">
+                    <i class="fas fa-spinner fa-spin text-4xl text-primary"></i>
+                </div>
+                <h3 class="text-xl font-semibold mb-2">Processing Payment</h3>
+                <p class="text-gray-600 mb-4">Please wait while we process your transaction...</p>
+                <div class="bg-gray-200 rounded-full h-2 mb-4">
+                    <div id="progressBar" class="bg-primary h-2 rounded-full transition-all duration-1000"
+                        style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Receipt Modal -->
+    <div id="receiptModal" class="fixed inset-0 bg-black bg-opacity-50 modal items-center justify-center z-50">
+        <div class="bg-white overflow-y-auto h-[520px] rounded-lg p-6 max-w-md w-full mx-4 relative">
+            <div id="receiptModalContent">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold">Receipt</h3>
+                    <button id="closeReceipt" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="receiptContent" class="receipt-print text-sm ml-11 border border-gray-500"></div>
+                <div class="mt-4 flex space-x-2">
+                    <button id="printReceiptBtn"
+                        class="flex-1 bg-primary text-dark p-2 rounded-lg hover:bg-secondary hover:text-white transition font-medium">
+                        <i class="fas fa-print mr-1"></i>Print
+                    </button>
+                    <button id="submitReceiptBtn"
+                        class="flex-1 bg-green-700 text-white p-2 rounded-lg hover:bg-green-600 transition font-medium">
+                        <i class="fas fa-check mr-1"></i>Submit
+                    </button>
+                </div>
+            </div>
+            <div id="submitLoader" class="loader mt-4"></div>
+        </div>
+    </div>
+
+
+    <!-- Add Product Modal -->
+    <div id="addProductModal" class="fixed inset-0 bg-black bg-opacity-50 modal items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <h3 class="text-xl font-semibold mb-4">Add New Product</h3>
+            <form id="addProductForm">
+                <input type="text" id="productName" placeholder="Product Name" class="w-full p-2 border mb-2 rounded"
+                    required>
+                <input type="number" id="productPrice" placeholder="Price" class="w-full p-2 border mb-2 rounded"
+                    required>
+                <input type="text" id="productCode" placeholder="Product Code (SKU)"
+                    class="w-full p-2 border mb-2 rounded" required>
+                <select id="productCategory" class="w-full p-2 border mb-2 rounded" required>
+                    <option value="">Select Category</option>
+                    <option value="CAKE">Cakes</option>
+                    <option value="PASTRY">Pastries</option>
+                    <option value="COOKIE">Cookies</option>
+                    <option value="DESSERT">Desserts</option>
+                    <option value="BEVERAGE">Beverages</option>
+                    <option value="SNACK">Snacks</option>
+                </select>
+                <select id="productImage" class="w-full p-2 border mb-2 rounded" required>
+                    <option value="">Select a symbol</option>
+                </select>
+                <button type="submit" class="bg-primary text-dark p-2 rounded w-full">Add Product</button>
+            </form>
+            <button id="closeAddModal" class="mt-2 text-gray-500 hover:text-gray-700 w-full">Close</button>
+        </div>
+    </div>
+
+    <!-- Print Area -->
+    <div id="printArea" style="display: none;"></div>
+
+    <script>
+    async function handleSubmit() {
+    const now = new Date();
+    const receiptNumber = 'R' + Date.now().toString().slice(-6);
+    const orderId = 'ORD' + Date.now().toString().slice(-3);
+    const tableNumber = document.getElementById('tableNumber')?.value || 'N/A';
+    const total = tempSubtotal - tempDiscountAmount;
+
+    // DOM Elements
+    const submitLoader = document.getElementById('submitLoader');
+    const receiptModalContent = document.getElementById('receiptModalContent');
+    const receiptModal = document.getElementById('receiptModal');
+
+    // Debug which element is missing
+    if (!submitLoader) console.error('submitLoader element is missing');
+    if (!receiptModalContent) console.error('receiptModalContent element is missing');
+    if (!receiptModal) console.error('receiptModal element is missing');
+
+    // Check if elements exist before manipulating
+    if (!submitLoader || !receiptModalContent || !receiptModal) {
+        console.error('One or more DOM elements are missing in handleSubmit.');
+        Toastify({
+            text: 'Error: Could not find required elements. Please try again.',
+            duration: 3000,
+            gravity: 'top',
+            position: 'right',
+            backgroundColor: '#dc2626', // Red for error
+            stopOnFocus: true
+        }).showToast();
+        return;
+    }
+
+    // Show loader and disable modal content
+    submitLoader.classList.add('show');
+    receiptModalContent.classList.add('modal-content-disabled');
+
+    // Construct payload using tempCart and stored customer details
+    const payload = {
+        orderId: orderId,
+        customerName: tempCustomerName || 'N/A',
+        customerMobile: tempCustomerMobile || 'N/A',
+        orderItems: tempCart.map(item => ({
+            itemName: item.name,
+            quantity: item.quantity,
+            price: item.price
+        })),
+        paymentMode: currentPaymentMethod.toUpperCase(),
+        paymentStatus: 'PAID',
+        totalAmount: total,
+        date: now.toISOString().split('T')[0], // Format: YYYY-MM-DD
+        time: now.toLocaleTimeString('en-US', { hour12: true }),
+        receiptNumber: receiptNumber,
+        tableNumber: parseInt(tableNumber) || 0
+    };
+
+    try {
+        // Send payload to Google Apps Script web app
+        const response = await fetch('https://script.google.com/macros/s/AKfycbyul6UkH5uehnc-hjATTk8Hg_T6c6Xo75bUKYczonF8Ie-yNooeH5BBlfWJBD4v9SBSlw/exec', {
+            method: 'POST',
+            mode: 'no-cors', // Avoid CORS preflight
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        // Since mode is 'no-cors', response is opaque; assume success if no exception
+        Toastify({
+            text: 'Order submitted successfully!',
+            duration: 3000,
+            gravity: 'top',
+            position: 'right',
+            backgroundColor: '#059669', // Green for success
+            stopOnFocus: true
+        }).showToast();
+
+        // Close the receipt modal on success
+        receiptModal.classList.remove('show');
+
+    } catch (error) {
+        console.error('Submission error:', error);
+        Toastify({
+            text: 'Error submitting order: ' + error.message,
+            duration: 3000,
+            gravity: 'top',
+            position: 'right',
+            backgroundColor: '#dc2626', // Red for error
+            stopOnFocus: true
+        }).showToast();
+    } finally {
+        // Hide loader and re-enable modal content
+        submitLoader.classList.remove('show');
+        receiptModalContent.classList.remove('modal-content-disabled');
+    }
+    console.log("order submission payload:", payload);
+}
+
+        // Existing initPOS and other code...
+        document.addEventListener('DOMContentLoaded', initPOS);
+        const bakeryProducts = [
+            { id: 1, name: "Vanilla Cake", price: 660, category: "CAKE", sku: "BC001", image: "🎂", type: "CAKE" },
+            { id: 2, name: "Pineapple Cake", price: 660, category: "CAKE", sku: "BC002", image: "🍰", type: "CAKE" },
+            { id: 3, name: "Blueberry Cake", price: 660, category: "CAKE", sku: "BC003", image: "🎂", type: "CAKE" },
+            { id: 4, name: "Mango Cake", price: 660, category: "CAKE", sku: "BC004", image: "🍰", type: "CAKE" },
+            { id: 5, name: "Butterscotch Cake", price: 660, category: "CAKE", sku: "BC005", image: "🎂", type: "CAKE" },
+            { id: 6, name: "Kulfi Falooda Cake", price: 660, category: "CAKE", sku: "BC006", image: "🍰", type: "CAKE" },
+            { id: 7, name: "Dutch Chocolate Cake", price: 720, category: "CAKE", sku: "CC001", image: "🍫", type: "CAKE" },
+            { id: 8, name: "Black Forest Cake", price: 720, category: "CAKE", sku: "CC002", image: "🎂", type: "CAKE" },
+            { id: 9, name: "White Forest Cake", price: 720, category: "CAKE", sku: "CC003", image: "🍰", type: "CAKE" },
+            { id: 10, name: "Choco Chips Cake", price: 720, category: "CAKE", sku: "CC004", image: "🍫", type: "CAKE" },
+            { id: 11, name: "Choco Truffle Cake", price: 780, category: "CAKE", sku: "CC005", image: "🎂", type: "CAKE" },
+            { id: 12, name: "Choco Coffee Cake", price: 780, category: "CAKE", sku: "CC006", image: "☕", type: "CAKE" },
+            { id: 13, name: "Tiramisu Cake", price: 780, category: "CAKE", sku: "CC007", image: "🍰", type: "CAKE" },
+            { id: 14, name: "Choco Vanilla Cake", price: 720, category: "CAKE", sku: "CC008", image: "🍫", type: "CAKE" },
+            { id: 15, name: "Choco Hazelnut Cake", price: 840, category: "CAKE", sku: "CC009", image: "🌰", type: "CAKE" },
+            { id: 16, name: "Choco Vanilla Oreo Cake", price: 780, category: "CAKE", sku: "CC010", image: "🍪", type: "CAKE" },
+            { id: 17, name: "Pistachio Rose Cake", price: 420, category: "CAKE", sku: "TC001", image: "🌹", type: "CAKE" },
+            { id: 18, name: "Banana Choco Walnut Cake", price: 360, category: "CAKE", sku: "TC002", image: "🍌", type: "CAKE" },
+            { id: 19, name: "Date & Walnut Cake", price: 384, category: "CAKE", sku: "TC003", image: "🌰", type: "CAKE" },
+            { id: 20, name: "Mava Cake", price: 420, category: "CAKE", sku: "TC004", image: "🍰", type: "CAKE" },
+            { id: 21, name: "Paan Gulkand Cake", price: 780, category: "CAKE", sku: "PC001", image: "🌿", type: "CAKE" },
+            { id: 22, name: "Red Velvet Cake", price: 840, category: "CAKE", sku: "PC002", image: "❤️", type: "CAKE" },
+            { id: 23, name: "Gulab Jamun Cake", price: 900, category: "CAKE", sku: "PC003", image: "🍯", type: "CAKE" },
+            { id: 24, name: "Rasmalai Cake", price: 960, category: "CAKE", sku: "PC004", image: "🥛", type: "CAKE" },
+            { id: 25, name: "Fresh Mix Fruit Cake", price: 840, category: "CAKE", sku: "PC005", image: "🍓", type: "CAKE" },
+            { id: 26, name: "Pineapple Pastry", price: 168, category: "PASTRY", sku: "P001", image: "🍍", type: "PASTRY" },
+            { id: 27, name: "Butterscotch Pastry", price: 168, category: "PASTRY", sku: "P002", image: "🧈", type: "PASTRY" },
+            { id: 28, name: "Kulfi Falooda Pastry", price: 168, category: "PASTRY", sku: "P003", image: "🍦", type: "PASTRY" },
+            { id: 29, name: "Dutch Chocolate Pastry", price: 180, category: "PASTRY", sku: "P004", image: "🍫", type: "PASTRY" },
+            { id: 30, name: "Chocolate Truffle Pastry", price: 192, category: "PASTRY", sku: "P005", image: "🍫", type: "PASTRY" },
+            { id: 31, name: "Lotus Biscoff Cheesecake", price: 300, category: "DESSERT", sku: "CK001", image: "🍰", type: "DESSERT" },
+            { id: 32, name: "Blueberry Cheesecake", price: 216, category: "DESSERT", sku: "CK002", image: "🍇", type: "DESSERT" },
+            { id: 33, name: "Nutella Cheesecake", price: 300, category: "DESSERT", sku: "CK003", image: "🍫", type: "DESSERT" },
+            { id: 34, name: "Strawberry Cheesecake", price: 216, category: "DESSERT", sku: "CK004", image: "🍓", type: "DESSERT" },
+            { id: 35, name: "Newyork Cheesecake", price: 300, category: "DESSERT", sku: "CK005", image: "🗽", type: "DESSERT" },
+            { id: 36, name: "Chocolate Cheesecake", price: 300, category: "DESSERT", sku: "CK006", image: "🍫", type: "DESSERT" },
+            { id: 37, name: "Rasmalai Cheesecake", price: 300, category: "DESSERT", sku: "CK007", image: "🥛", type: "DESSERT" },
+            { id: 38, name: "Motichoor Cheesecake", price: 300, category: "DESSERT", sku: "CK008", image: "🍪", type: "DESSERT" },
+            { id: 39, name: "Lotus Biscoff Cheesecake Jar", price: 240, category: "DESSERT", sku: "CJ001", image: "🍯🍪", type: "DESSERT" },
+            { id: 40, name: "Blueberry Cheesecake Jar", price: 204, category: "DESSERT", sku: "CJ002", image: "🍯🍇", type: "DESSERT" },
+            { id: 41, name: "Nutella Cheesecake Jar", price: 240, category: "DESSERT", sku: "CJ003", image: "🍯🌰", type: "DESSERT" },
+            { id: 42, name: "Strawberry Cheesecake Jar", price: 204, category: "DESSERT", sku: "CJ004", image: "🍯🍓", type: "DESSERT" },
+            { id: 43, name: "Chocolate Cheesecake Jar", price: 240, category: "DESSERT", sku: "CJ005", image: "🍯🍫", type: "DESSERT" },
+            { id: 44, name: "Choco Hazelnut Cheesecake Jar", price: 240, category: "DESSERT", sku: "CJ006", image: "🍯🌰🍫", type: "DESSERT" },
+            { id: 45, name: "Dark Chocolate Donut", price: 144, category: "PASTRY", sku: "D001", image: "🍩", type: "PASTRY" },
+            { id: 46, name: "White Chocolate Donut", price: 144, category: "PASTRY", sku: "D002", image: "🍩", type: "PASTRY" },
+            { id: 47, name: "Milk Chocolate Donut", price: 144, category: "PASTRY", sku: "D003", image: "🍩", type: "PASTRY" },
+            { id: 48, name: "Nutella Donut", price: 144, category: "PASTRY", sku: "D004", image: "🍩", type: "PASTRY" },
+            { id: 49, name: "Biscoff Donut", price: 144, category: "PASTRY", sku: "D005", image: "🍩", type: "PASTRY" },
+            { id: 50, name: "Chocolate Bomboloni", price: 180, category: "PASTRY", sku: "B001", image: "🥐", type: "PASTRY" },
+            { id: 51, name: "Nutella Bomboloni", price: 180, category: "PASTRY", sku: "B002", image: "🥐", type: "PASTRY" },
+            { id: 52, name: "Biscoff Bomboloni", price: 180, category: "PASTRY", sku: "B003", image: "🥐", type: "PASTRY" },
+            { id: 53, name: "French Butter Croissant", price: 192, category: "PASTRY", sku: "CR001", image: "🥐", type: "PASTRY" },
+            { id: 54, name: "Almond Croissant", price: 192, category: "PASTRY", sku: "CR002", image: "🥐", type: "PASTRY" },
+            { id: 55, name: "Chocolate Croissant", price: 192, category: "PASTRY", sku: "CR003", image: "🥐", type: "PASTRY" },
+            { id: 56, name: "Vanilla Cupcake", price: 96, category: "CAKE", sku: "CUP001", image: "🧁", type: "CAKE" },
+            { id: 57, name: "Pineapple Cupcake", price: 96, category: "CAKE", sku: "CUP002", image: "🧁", type: "CAKE" },
+            { id: 58, name: "Strawberry Cupcake", price: 96, category: "CAKE", sku: "CUP003", image: "🧁", type: "CAKE" },
+            { id: 59, name: "Blueberry Cupcake", price: 96, category: "CAKE", sku: "CUP004", image: "🍇🧁", type: "CAKE" },
+            { id: 60, name: "Chocolate Cupcake", price: 96, category: "CAKE", sku: "CUP005", image: "🧁", type: "CAKE" },
+            { id: 61, name: "Chocolate Brownie", price: 168, category: "DESSERT", sku: "BR001", image: "🍫", type: "DESSERT" },
+            { id: 62, name: "Walnut Brownie", price: 192, category: "DESSERT", sku: "BR002", image: "🌰", type: "DESSERT" },
+            { id: 63, name: "Cream Cheese Korean Bun", price: 216, category: "PASTRY", sku: "BR003", image: "🥖", type: "PASTRY" },
+            { id: 64, name: "Vanilla Dryfruits Muffin", price: 72, category: "PASTRY", sku: "M001", image: "🧁🌰🍇", type: "PASTRY" },
+            { id: 65, name: "Chocolate Muffin", price: 72, category: "PASTRY", sku: "M002", image: "🧁🍫", type: "PASTRY" },
+            { id: 66, name: "Banana Muffin", price: 72, category: "PASTRY", sku: "M003", image: "🧁🍌", type: "PASTRY" },
+            { id: 67, name: "Date & Walnut Muffin", price: 84, category: "PASTRY", sku: "M004", image: "🧁🌰🌴", type: "PASTRY" },
+            { id: 68, name: "Dry Fruits Cookies (10 pack)", price: 180, category: "COOKIE", sku: "CO001", image: "🍪🌰🍇", type: "COOKIE" },
+            { id: 69, name: "Choco Chips Cookies (10 pack)", price: 180, category: "COOKIE", sku: "CO002", image: "🍪🍫", type: "COOKIE" },
+            { id: 70, name: "Coconut Cookies (10 pack)", price: 180, category: "COOKIE", sku: "CO003", image: "🍪🥥", type: "COOKIE" },
+            { id: 71, name: "Healthy Dry Fruits Cookies (10 pack)", price: 240, category: "COOKIE", sku: "CO004", image: "🍪🌰🍇💚", type: "COOKIE" },
+            { id: 72, name: "Healthy Chocochips Cookies (10 pack)", price: 240, category: "COOKIE", sku: "CO005", image: "🍪🍫💚", type: "COOKIE" },
+            { id: 73, name: "Cakesickles", price: 96, category: "DESSERT", sku: "CS001", image: "🍭", type: "DESSERT" },
+            { id: 74, name: "Cold Coffee", price: 72, category: "BEVERAGE", sku: "BV001", image: "🥤", type: "BEVERAGE" },
+            { id: 75, name: "French Fries", price: 108, category: "SNACK", sku: "SN001", image: "🍟", type: "SNACK" }
+        ];
+
+        let cart = [];
+        let currentCategory = 'all';
+        let currentPaymentMethod = 'cash';
+        let discountPercent = 0;
+
+        // DOM Elements
+        const productSearch = document.getElementById('productSearch');
+        const productsGrid = document.getElementById('productsGrid');
+        const cartItems = document.getElementById('cartItems');
+        const subtotalEl = document.getElementById('subtotal');
+        // const taxEl = document.getElementById('tax');
+        const discountEl = document.getElementById('discount');
+        const totalEl = document.getElementById('total');
+        const processPaymentBtn = document.getElementById('processPayment');
+        const paymentModal = document.getElementById('paymentModal');
+        const receiptModal = document.getElementById('receiptModal');
+        const printArea = document.getElementById('printArea');
+
+        // Initialize POS System
+        function initPOS() {
+            displayProducts(bakeryProducts);
+            setupEventListeners();
+            updateCartDisplay();
+            setupSidebar();
+        }
+
+        // Setup sidebar functionality
+        function setupSidebar() {
+            const mobileToggle = document.getElementById('mobileToggleSidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const closeMobileSidebar = document.getElementById('closeMobileSidebar');
+
+            mobileToggle.addEventListener('click', () => {
+                sidebarOverlay.style.display = 'block';
+            });
+
+            closeMobileSidebar.addEventListener('click', () => {
+                sidebarOverlay.style.display = 'none';
+            });
+
+            sidebarOverlay.addEventListener('click', (e) => {
+                if (e.target === sidebarOverlay) {
+                    sidebarOverlay.style.display = 'none';
+                }
+            });
+        }
+
+        // Display products
+        function displayProducts(productsToShow) {
+            productsGrid.innerHTML = productsToShow.map(product => `
+                <div class="product-card bg-gray-50 p-4 rounded-lg hover:shadow-md transition cursor-pointer border border-gray-200" 
+                     data-product-id="${product.id}">
+                    <div class="text-4xl text-center mb-2">${product.image}</div>
+                    <h3 class="font-semibold text-sm mb-1 text-center text-gray-800">${product.name}</h3>
+                    <p class="text-lg font-bold text-primary text-center">&#8377;${product.price.toFixed(2)}</p>
+                    <p class="text-xs text-gray-500 text-center mt-1">${product.sku}</p>
+                    <div class="mt-2 text-center">
+                        <span class="bg-gray-200 text-gray-700 text-xs px-2 py-1 rounded-full">${product.category}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Filter products
+        function filterProducts() {
+            const searchTerm = productSearch.value.toLowerCase();
+            let filteredProducts = bakeryProducts;
+
+            if (currentCategory !== 'all') {
+                filteredProducts = filteredProducts.filter(p => p.category === currentCategory);
+            }
+
+            if (searchTerm) {
+                filteredProducts = filteredProducts.filter(p =>
+                    p.name.toLowerCase().includes(searchTerm) ||
+                    p.sku.toLowerCase().includes(searchTerm)
+                );
+            }
+
+            displayProducts(filteredProducts);
+        }
+
+        // Add to cart
+        function addToCart(productId) {
+            const product = bakeryProducts.find(p => p.id === productId);
+            const existingItem = cart.find(item => item.id === productId);
+
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({ ...product, quantity: 1 });
+            }
+
+            updateCartDisplay();
+            updateTotals();
+        }
+
+        // Update cart display
+        function updateCartDisplay() {
+            if (cart.length === 0) {
+                cartItems.innerHTML = `
+                    <div class="text-center text-gray-500 py-8">
+                        <i class="fas fa-shopping-cart text-4xl mb-2"></i>
+                        <p>Cart is empty</p>
+                    </div>
+                `;
+                processPaymentBtn.disabled = true;
+                return;
+            }
+
+            cartItems.innerHTML = cart.map(item => `
+                <div class="cart-item flex items-center justify-between p-3 bg-gray-50 rounded-lg mb-2 border">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-3">${item.image}</span>
+                        <div>
+                            <p class="font-semibold text-sm text-gray-800">${item.name}</p>
+                            <p class="text-xs text-gray-600">₹${item.price.toFixed(2)} each</p>
+                            <p class="text-xs text-gray-500">${item.sku}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <button class="quantity-btn bg-danger text-white w-6 h-6 rounded-full text-xs bg-red-700 hover:bg-red-500 transition" 
+                                data-action="decrease" data-id="${item.id}">-</button>
+                        <span class="mx-2 font-semibold">${item.quantity}</span>
+                        <button class="quantity-btn bg-success text-white w-6 h-6 rounded-full text-xs bg-green-700 hover:bg-green-500 transition" 
+                                data-action="increase" data-id="${item.id}">+</button>
+                        <button class="remove-item ml-2 text-danger hover:text-red-700 transition" data-id="${item.id}">
+                            <i class="fas fa-trash text-xs"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+
+            processPaymentBtn.disabled = false;
+        }
+
+        // Update totals
+        function updateTotals() {
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const discountAmount = subtotal * (discountPercent / 100);
+            // const tax = (subtotal - discountAmount) * 0.085;
+            const total = subtotal - discountAmount;
+
+            subtotalEl.textContent = `₹${subtotal.toFixed(2)}`;
+            discountEl.textContent = `-₹${discountAmount.toFixed(2)}`;
+            // taxEl.textContent = `₹${tax.toFixed(2)}`;
+            totalEl.textContent = `₹${total.toFixed(2)}`;
+        }
+
+        // Store cart, totals, and customer details temporarily for submission
+        let tempCart = [];
+        let tempSubtotal = 0;
+        let tempDiscountAmount = 0;
+        let tempCustomerName = '';
+        let tempCustomerMobile = '';
+
+        // Modified processPayment to store cart and customer details before clearing
+        function processPayment() {
+            if (cart.length === 0) {
+                alert('Cart is empty. Please add items before processing payment.');
+                return;
+            }
+
+            paymentModal.classList.add('show');
+
+            let progress = 0;
+            const progressBar = document.getElementById('progressBar');
+
+            // Store cart, totals, and customer details before clearing
+            tempCart = [...cart];
+            tempSubtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            tempDiscountAmount = tempSubtotal * (discountPercent / 100);
+            tempCustomerName = document.getElementById('customerName').value || 'N/A';
+            tempCustomerMobile = document.getElementById('customerMobile').value || 'N/A';
+
+            const interval = setInterval(() => {
+                progress += 10;
+                progressBar.style.width = progress + '%';
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    setTimeout(() => {
+                        paymentModal.classList.remove('show');
+                        showReceipt();
+                        clearCart();
+                    }, 1000);
+                }
+            }, 200);
+        }
+
+        // Show receipt
+        function showReceipt() {
+            const receiptContent = document.getElementById('receiptContent');
+            const now = new Date();
+            const receiptNumber = 'R' + Date.now().toString().slice(-6);
+            const orderId = 'ORD' + Date.now().toString().slice(-3);
+
+            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            const discountAmount = subtotal * (discountPercent / 100);
+            // const tax = (subtotal - discountAmount) * 0.085;
+            const total = subtotal - discountAmount;
+
+            const customerName = document.getElementById('customerName').value || 'N/A';
+            const customerMobile = document.getElementById('customerMobile').value || 'N/A';
+            const tableNumber = document.getElementById('tableNumber').value || 'N/A';
+
+            const receiptHTML = `
+                <div class="text-center border-b pb-2 mb-2">
+                    <h2 class="font-bold text-base">The Home Bakery</h2>
+                    <p class="text-xs">by Anjali</p>
+                </div>
+                <div class="mb-2 text-xs">
+                    <p><strong>Order ID:</strong> ${orderId}</p>
+                    <p><strong>Receipt Number:</strong> ${receiptNumber}</p>
+                    <p><strong>Date:</strong> ${now.toLocaleDateString()}</p>
+                    <p><strong>Time:</strong> ${now.toLocaleTimeString()}</p>
+                    <p><strong>Customer:</strong> ${customerName}</p>
+                    <p><strong>Mobile:</strong> ${customerMobile}</p>
+                    <p><strong>Table Number:</strong> ${tableNumber}</p>
+                    <p><strong>Payment:</strong> ${currentPaymentMethod.toUpperCase()}</p>
+                </div>
+                <div class="border-t pt-1 mb-2 text-xs">
+                    ${cart.map(item => `
+                        <div class="flex justify-between py-0.5">
+                            <span>${item.name.substring(0, 20)} x ${item.quantity}</span>
+                            <span>&#8377;${(item.price * item.quantity).toFixed(2)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="border-t pt-1 text-xs">
+                    <div class="flex justify-between"><span>Subtotal:</span><span>&#8377;${subtotal.toFixed(2)}</span></div>
+                    <div class="flex justify-between"><span>Discount:</span><span>-&#8377;${discountAmount.toFixed(2)}</span></div>
+                    <div class="flex justify-between font-bold border-t pt-1"><span>Total:</span><span>&#8377;${total.toFixed(2)}</span></div>
+                </div>
+                <div class="text-center mt-2 pt-2 border-t text-xs">
+                    <p>Thank you for choosing The Home Bakery!</p>
+                    <p>Have a sweet day!</p>
+                </div>
+            `;
+
+            receiptContent.innerHTML = receiptHTML;
+            printArea.innerHTML = receiptHTML;
+            receiptModal.classList.add('show');
+        }
+
+        // Clear cart
+        function clearCart() {
+            cart = [];
+            discountPercent = 0;
+            document.getElementById('customerName').value = '';
+            document.getElementById('customerMobile').value = '';
+            updateCartDisplay();
+            updateTotals();
+            processPaymentBtn.disabled = true;
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+    // Product search
+    productSearch.addEventListener('input', filterProducts);
+
+    // Category buttons
+    document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.category-btn').forEach(b => {
+                b.classList.remove('active', 'bg-primary', 'text-dark');
+                b.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            e.target.classList.add('active', 'bg-primary', 'text-dark');
+            e.target.classList.remove('bg-gray-200', 'text-gray-700');
+            currentCategory = e.target.dataset.category;
+            filterProducts();
+        });
+    });
+
+    // Payment method buttons
+    document.querySelectorAll('.payment-method').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.payment-method').forEach(b => {
+                b.classList.remove('active', 'bg-primary', 'text-dark');
+                b.classList.add('bg-gray-200', 'text-gray-700');
+            });
+            e.target.classList.add('active', 'bg-primary', 'text-dark');
+            e.target.classList.remove('bg-gray-200', 'text-gray-700');
+            currentPaymentMethod = e.target.dataset.method;
+        });
+    });
+
+    // Product click to add to cart
+    productsGrid.addEventListener('click', (e) => {
+        const productCard = e.target.closest('.product-card');
+        if (productCard) {
+            const productId = parseInt(productCard.dataset.productId);
+            addToCart(productId);
+        }
+    });
+
+    // Cart item interactions
+    cartItems.addEventListener('click', (e) => {
+        const target = e.target.closest('button');
+        if (!target) return;
+
+        const itemId = parseInt(target.dataset.id);
+        const action = target.dataset.action;
+
+        if (action === 'increase') {
+            const item = cart.find(item => item.id === itemId);
+            if (item) item.quantity += 1;
+        } else if (action === 'decrease') {
+            const item = cart.find(item => item.id === itemId);
+            if (item && item.quantity > 1) {
+                item.quantity -= 1;
+            } else if (item && item.quantity === 1) {
+                cart = cart.filter(item => item.id !== itemId);
+            }
+        } else if (target.classList.contains('remove-item')) {
+            cart = cart.filter(item => item.id !== itemId);
+        }
+
+        updateCartDisplay();
+        updateTotals();
+    });
+
+    // Action buttons
+    document.getElementById('clearCart').addEventListener('click', () => {
+        if (confirm('Are you sure you want to clear the cart?')) {
+            clearCart();
+        }
+    });
+    document.getElementById('printReceipt').addEventListener('click', showReceipt);
+    document.getElementById('newSaleBtn').addEventListener('click', () => {
+        document.getElementById('addProductModal').classList.add('show');
+    });
+
+    // Process payment button
+    processPaymentBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        processPayment();
+    });
+
+    // Modal close buttons
+    document.getElementById('closeReceipt').addEventListener('click', () => {
+        receiptModal.classList.remove('show');
+    });
+
+    // Submit receipt button
+    const submitReceiptBtn = document.getElementById('submitReceiptBtn');
+    if (submitReceiptBtn) {
+        submitReceiptBtn.addEventListener('click', () => {
+            handleSubmit();
+        });
+    } else {
+        console.error('submitReceiptBtn element is missing');
+        Toastify({
+            text: 'Error: Submit button not found. Please contact support.',
+            duration: 3000,
+            gravity: 'top',
+            position: 'right',
+            backgroundColor: '#dc2626',
+            stopOnFocus: true
+        }).showToast();
+    }
+
+    // Close modals when clicking outside
+    paymentModal.addEventListener('click', (e) => {
+        if (e.target === paymentModal) {
+            paymentModal.classList.remove('show');
+        }
+    });
+
+    receiptModal.addEventListener('click', (e) => {
+        if (e.target === receiptModal) {
+            receiptModal.classList.remove('show');
+        }
+    });
+
+    const addProductModal = document.getElementById('addProductModal');
+    addProductModal.addEventListener('click', (e) => {
+        if (e.target === addProductModal) {
+            addProductModal.classList.remove('show');
+        }
+    });
+
+    // Add product form submit
+    document.getElementById('addProductForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newId = bakeryProducts.length + 1;
+        const newProduct = {
+            id: newId,
+            name: document.getElementById('productName').value,
+            price: parseFloat(document.getElementById('productPrice').value),
+            category: document.getElementById('productCategory').value.toUpperCase(),
+            sku: document.getElementById('productCode').value,
+            image: document.getElementById('productImage').value,
+            type: document.getElementById('productCategory').value.toUpperCase()
+        };
+        bakeryProducts.push(newProduct);
+        displayProducts(bakeryProducts);
+        filterProducts();
+        document.getElementById('addProductModal').classList.remove('show');
+        e.target.reset();
+    });
+
+    // Close add product modal
+    document.getElementById('closeAddModal').addEventListener('click', () => {
+        document.getElementById('addProductModal').classList.remove('show');
+    });
+
+    // Populate symbols based on category
+    const productCategoryInput = document.getElementById('productCategory');
+    const productImageSelect = document.getElementById('productImage');
+    productCategoryInput.addEventListener('change', () => {
+        const cat = productCategoryInput.value.toUpperCase();
+        const symbols = [...new Set(bakeryProducts.filter(p => p.category === cat).map(p => p.image))];
+        productImageSelect.innerHTML = '<option value="">Select a symbol</option>';
+        if (symbols.length > 0) {
+            productImageSelect.innerHTML += symbols.map(s => `<option value="${s}">${s}</option>`).join('');
+        } else {
+            productImageSelect.innerHTML += '<option value="">No symbols for this category</option>';
+        }
+    });
+}
+
+        // Initialize the POS system when page loads
+        // document.addEventListener('DOMContentLoaded', initPOS);
+        // document.getElementById('submitReceiptBtn').addEventListener('click', () => {
+        //     handleSubmit();
+        // });
+        document.getElementById('logoutBtn').addEventListener('click', function(e) {
+            e.preventDefault(); // Prevent default link behavior
+            
+            // Remove isLoggedIn from sessionStorage
+            sessionStorage.removeItem('isLoggedIn');
+            
+            // Redirect to login page
+            window.location.href = '/login.html';
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="./fixAddProductModal.js"></script>
+</body>
+</html>
