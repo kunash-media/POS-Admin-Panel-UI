@@ -100,7 +100,7 @@ function getHeightInMM(element) {
     return Math.ceil(heightMM); // Round up to avoid truncation
 }
 
-// Override the print receipt button to dynamically set @page height
+// ----------------Override the print receipt button to dynamically set @page height
 document.getElementById('printReceiptBtn').addEventListener('click', function (e) {
     e.preventDefault(); // Prevent default behavior
 
@@ -177,6 +177,8 @@ document.getElementById('printReceiptBtn').addEventListener('click', function (e
             .receipt-print {
                 margin-left: 0 !important; /* Remove ml-11 */
                 font-size: 12px !important;
+                font-weight: 700 !important; /* Increased font-weight for boldness */
+                color: #000000 !important; /* High contrast black for clarity */
                 width: 80mm !important;
                 box-sizing: border-box !important;
             }
@@ -184,9 +186,16 @@ document.getElementById('printReceiptBtn').addEventListener('click', function (e
                 margin-bottom: 2mm !important; /* Balanced spacing between elements */
                 line-height: 1.6 !important; /* Improved readability */
                 padding: 0 !important;
+                font-weight: 700 !important; /* Ensure all text is bold */
+                color: #000000 !important; /* Ensure high contrast */
+            }
+            h2, h3 {
+                font-weight: 900 !important; /* Extra bold for headings */
+                color: #000000 !important; /* High contrast black */
             }
             .border-t, .border-b {
                 margin: 3mm 0 !important; /* Balanced spacing around borders */
+                border-color: #000000 !important; /* Darker border for visibility */
             }
             .text-center {
                 margin-bottom: 3mm !important; /* Balanced spacing for header */
@@ -216,3 +225,120 @@ document.getElementById('printReceiptBtn').addEventListener('click', function (e
         stopOnFocus: true
     }).showToast();
 });
+
+// Override the print receipt button to dynamically set @page height
+// document.getElementById('printReceiptBtn').addEventListener('click', function (e) {
+//     e.preventDefault(); // Prevent default behavior
+
+//     // Get the receipt content element
+//     const receiptContent = document.getElementById('receiptContent');
+
+//     // Clone the receipt content to measure its height offscreen
+//     const clone = receiptContent.cloneNode(true);
+//     clone.style.position = 'absolute';
+//     clone.style.left = '-9999px';
+//     clone.style.width = '80mm'; // Match thermal printer width
+//     clone.style.visibility = 'hidden';
+//     clone.style.fontSize = '12px'; // Match receipt-print font size
+//     clone.style.padding = '8mm'; // Adjusted padding for balance
+//     clone.style.boxSizing = 'border-box';
+//     // Apply styles to clone to match print spacing
+//     clone.style.lineHeight = '1.6'; // Slightly increased line-height for readability
+//     const cloneChildren = clone.querySelectorAll('p, div');
+//     cloneChildren.forEach(child => {
+//         child.style.marginBottom = '2mm'; // Balanced margin
+//     });
+//     document.body.appendChild(clone);
+
+//     // Calculate height in mm, add buffer for padding/margins
+//     let contentHeightMM = getHeightInMM(clone);
+//     contentHeightMM += 15; // Balanced buffer for thermal printer
+
+//     // Remove the clone
+//     document.body.removeChild(clone);
+
+//     // Create or update a style tag for dynamic @page
+//     let printStyle = document.getElementById('dynamicPrintStyle');
+//     if (!printStyle) {
+//         printStyle = document.createElement('style');
+//         printStyle.id = 'dynamicPrintStyle';
+//         document.head.appendChild(printStyle);
+//     }
+//     printStyle.innerHTML = `
+//         @media print {
+//             @page {
+//                 size: 80mm ${contentHeightMM}mm !important;
+//                 margin: 0 !important;
+//             }
+//             html, body {
+//                 margin: 0 !important;
+//                 padding: 0 !important;
+//                 height: ${contentHeightMM}mm !important;
+//                 width: 80mm !important;
+//                 overflow: hidden !important;
+//             }
+//             body * {
+//                 visibility: hidden !important;
+//                 margin: 0 !important;
+//                 padding: 0 !important;
+//             }
+//             #printArea, #printArea * {
+//                 visibility: visible !important;
+//             }
+//             #printArea {
+//                 position: absolute !important;
+//                 top: 0 !important;
+//                 left: 0 !important;
+//                 width: 80mm !important;
+//                 height: ${contentHeightMM}mm !important;
+//                 margin: 0 !important;
+//                 padding: 8mm 8mm 8mm 8mm !important; /* Balanced padding */
+//                 box-sizing: border-box !important;
+//                 overflow: hidden !important;
+//                 page-break-after: avoid !important;
+//                 page-break-before: avoid !important;
+//                 break-after: avoid !important;
+//                 break-before: avoid !important;
+//             }
+//             .receipt-print {
+//                 margin-left: 0 !important; /* Remove ml-11 */
+//                 font-size: 12px !important;
+//                 width: 80mm !important;
+//                 box-sizing: border-box !important;
+//             }
+//             p, div {
+//                 margin-bottom: 2mm !important; /* Balanced spacing between elements */
+//                 line-height: 1.6 !important; /* Improved readability */
+//                 padding: 0 !important;
+//             }
+//             .border-t, .border-b {
+//                 margin: 3mm 0 !important; /* Balanced spacing around borders */
+//             }
+//             .text-center {
+//                 margin-bottom: 3mm !important; /* Balanced spacing for header */
+//             }
+//             /* Prevent any page breaks within content */
+//             * {
+//                 page-break-inside: avoid !important;
+//                 break-inside: avoid !important;
+//             }
+//         }
+//     `;
+
+//     // Set printArea content and print
+//     const printArea = document.getElementById('printArea');
+//     printArea.innerHTML = receiptContent.innerHTML;
+//     printArea.style.display = 'block';
+//     window.print();
+//     printArea.style.display = 'none';
+
+//     // Show success notification
+//     Toastify({
+//         text: 'Receipt printed successfully!',
+//         duration: 3000,
+//         gravity: 'top',
+//         position: 'right',
+//         backgroundColor: '#059669', // Green for success
+//         stopOnFocus: true
+//     }).showToast();
+// });

@@ -306,10 +306,10 @@
                             <span>Subtotal:</span>
                             <span id="subtotal">&#8377;0.00</span>
                         </div>
-                        <div class="flex justify-between mb-2">
+                        <!-- <div class="flex justify-between mb-2">
                             <span>Discount:</span>
                             <span id="discount" class="text-success">&#8377;0.00</span>
-                        </div>
+                        </div> -->
                         <div class="border-t pt-2 flex justify-between font-bold text-lg">
                             <span>Total:</span>
                             <span id="total" class="text-primary">&#8377;0.00</span>
@@ -318,12 +318,14 @@
 
                     <!-- Customer Details -->
                     <div class="mb-6">
-                        <input type="text" id="customerName" placeholder="Customer Name"
-                            class="w-full p-3 border border-gray-300 rounded-lg mb-2">
+                        <div class="flex justify-between gap-2">
+                            <input type="text" id="customerName" placeholder="Customer Name" class="w-full p-3 border border-gray-300 rounded-lg mb-2">
+                            <input type="text" id="tableNumber" placeholder="Table No." class="w-[80px] p-3 border border-gray-300 rounded-lg mb-2">
+                        </div>
+
                         <input type="text" id="customerMobile" placeholder="Mobile Number"
                             class="w-full p-3 border border-gray-300 rounded-lg mb-2">
-                        <input type="text" id="tableNumber" placeholder="Table Number"
-                            class="w-full p-3 border border-gray-300 rounded-lg">
+                        
                     </div>
 
                     <!-- Payment Methods -->
@@ -336,18 +338,18 @@
                                 <i class="fas fa-money-bill-wave text-xl mb-1"></i>
                                 <span class="text-sm font-medium">Cash</span>
                             </button>
-                            <button
+                            <!-- <button
                                 class="payment-method bg-gray-200 text-gray-700 p-3 rounded-lg flex flex-col items-center transition hover:bg-gray-300"
                                 data-method="card">
                                 <i class="fas fa-credit-card text-xl mb-1"></i>
                                 <span class="text-sm">Card</span>
-                            </button>
-                            <button
+                            </button> -->
+                            <!-- <button
                                 class="payment-method bg-gray-200 text-gray-700 p-3 rounded-lg flex flex-col items-center transition hover:bg-gray-300"
                                 data-method="mobile">
                                 <i class="fas fa-mobile-alt text-xl mb-1"></i>
                                 <span class="text-sm">Mobile Pay</span>
-                            </button>
+                            </button> -->
                             <button
                                 class="payment-method bg-gray-200 text-gray-700 p-3 rounded-lg flex flex-col items-center transition hover:bg-gray-300"
                                 data-method="upi">
@@ -396,8 +398,38 @@
         </div>
     </div>
 
+
+<!-- Receipt Modal -->
+<div id="receiptModal" class="fixed inset-0 bg-black bg-opacity-50 modal items-center justify-center z-50">
+    <div class="bg-white overflow-y-auto h-[520px] rounded-lg p-6 max-w-md w-full mx-4 relative flex flex-col">
+        <div class="sticky top-0 bg-white z-10 -mx-6 px-6 py-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-semibold">Receipt</h3>
+                <button id="closeReceipt" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+        <div id="receiptModalContent" class="flex-1">
+            <div id="receiptContent" class="receipt-print text-sm ml-11 border border-gray-500"></div>
+        </div>
+        <div class="sticky bottom-0 bg-white z-10 pt-4 -mx-6 px-6 border-t border-gray-200">
+            <div class="flex space-x-2">
+                <button id="printReceiptBtn"
+                    class="flex-1 bg-primary text-dark p-2 rounded-lg hover:bg-secondary hover:text-white transition font-medium">
+                    <i class="fas fa-print mr-1"></i>Print
+                </button>
+                <button id="submitReceiptBtn"
+                    class="flex-1 bg-green-700 text-white p-2 rounded-lg hover:bg-green-600 transition font-medium">
+                    <i class="fas fa-check mr-1"></i>Submit
+                </button>
+            </div>
+        </div>
+        <div id="submitLoader" class="loader mt-4"></div>
+    </div>
+</div>
     <!-- Receipt Modal -->
-    <div id="receiptModal" class="fixed inset-0 bg-black bg-opacity-50 modal items-center justify-center z-50">
+    <!-- <div id="receiptModal" class="fixed inset-0 bg-black bg-opacity-50 modal items-center justify-center z-50">
         <div class="bg-white overflow-y-auto h-[520px] rounded-lg p-6 max-w-md w-full mx-4 relative">
             <div id="receiptModalContent">
                 <div class="flex justify-between items-center mb-4">
@@ -420,7 +452,7 @@
             </div>
             <div id="submitLoader" class="loader mt-4"></div>
         </div>
-    </div>
+    </div> -->
 
 
     <!-- Add Product Modal -->
@@ -461,7 +493,7 @@
     const receiptNumber = 'R' + Date.now().toString().slice(-6);
     const orderId = 'ORD' + Date.now().toString().slice(-3);
     const tableNumber = document.getElementById('tableNumber')?.value || 'N/A';
-    const total = tempSubtotal - tempDiscountAmount;
+    const total = tempSubtotal;
 
     // DOM Elements
     const submitLoader = document.getElementById('submitLoader');
@@ -635,7 +667,7 @@
         let cart = [];
         let currentCategory = 'all';
         let currentPaymentMethod = 'cash';
-        let discountPercent = 0;
+        // let discountPercent = 0;
 
         // DOM Elements
         const productSearch = document.getElementById('productSearch');
@@ -643,7 +675,7 @@
         const cartItems = document.getElementById('cartItems');
         const subtotalEl = document.getElementById('subtotal');
         // const taxEl = document.getElementById('tax');
-        const discountEl = document.getElementById('discount');
+        // const discountEl = document.getElementById('discount');
         const totalEl = document.getElementById('total');
         const processPaymentBtn = document.getElementById('processPayment');
         const paymentModal = document.getElementById('paymentModal');
@@ -771,12 +803,12 @@
         // Update totals
         function updateTotals() {
             const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const discountAmount = subtotal * (discountPercent / 100);
+            // const discountAmount = subtotal * (discountPercent / 100);
             // const tax = (subtotal - discountAmount) * 0.085;
-            const total = subtotal - discountAmount;
+            const total = subtotal;  //- discountAmount
 
             subtotalEl.textContent = `₹${subtotal.toFixed(2)}`;
-            discountEl.textContent = `-₹${discountAmount.toFixed(2)}`;
+            // discountEl.textContent = `-₹${discountAmount.toFixed(2)}`;
             // taxEl.textContent = `₹${tax.toFixed(2)}`;
             totalEl.textContent = `₹${total.toFixed(2)}`;
         }
@@ -784,7 +816,7 @@
         // Store cart, totals, and customer details temporarily for submission
         let tempCart = [];
         let tempSubtotal = 0;
-        let tempDiscountAmount = 0;
+        // let tempDiscountAmount = 0;
         let tempCustomerName = '';
         let tempCustomerMobile = '';
 
@@ -803,7 +835,7 @@
             // Store cart, totals, and customer details before clearing
             tempCart = [...cart];
             tempSubtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            tempDiscountAmount = tempSubtotal * (discountPercent / 100);
+            // tempDiscountAmount = tempSubtotal * (discountPercent / 100);
             tempCustomerName = document.getElementById('customerName').value || 'N/A';
             tempCustomerMobile = document.getElementById('customerMobile').value || 'N/A';
 
@@ -830,9 +862,9 @@
             const orderId = 'ORD' + Date.now().toString().slice(-3);
 
             const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            const discountAmount = subtotal * (discountPercent / 100);
+            // const discountAmount = subtotal * (discountPercent / 100);
             // const tax = (subtotal - discountAmount) * 0.085;
-            const total = subtotal - discountAmount;
+            const total = subtotal ; //- discountAmount
 
             const customerName = document.getElementById('customerName').value || 'N/A';
             const customerMobile = document.getElementById('customerMobile').value || 'N/A';
@@ -863,7 +895,6 @@
                 </div>
                 <div class="border-t pt-1 text-xs">
                     <div class="flex justify-between"><span>Subtotal:</span><span>&#8377;${subtotal.toFixed(2)}</span></div>
-                    <div class="flex justify-between"><span>Discount:</span><span>-&#8377;${discountAmount.toFixed(2)}</span></div>
                     <div class="flex justify-between font-bold border-t pt-1"><span>Total:</span><span>&#8377;${total.toFixed(2)}</span></div>
                 </div>
                 <div class="text-center mt-2 pt-2 border-t text-xs">
