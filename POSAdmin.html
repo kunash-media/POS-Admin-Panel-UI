@@ -320,11 +320,11 @@
                     <div class="mb-6">
                         <div class="flex justify-between gap-2">
                             <input type="text" id="customerName" placeholder="Customer Name" class="w-full p-3 border border-gray-300 rounded-lg mb-2">
-                            <input type="text" id="tableNumber" placeholder="Table No." class="w-[80px] p-3 border border-gray-300 rounded-lg mb-2">
+                            <input type="text" id="tableNumber" placeholder="Table No." class="w-[88px] p-3 border border-gray-300 rounded-lg mb-2">
                         </div>
-
                         <input type="text" id="customerMobile" placeholder="Mobile Number"
                             class="w-full p-3 border border-gray-300 rounded-lg mb-2">
+                        <input type="text" placeholder="Enter Discount Amount" name="discount" id="discount" class="w-full p-3 border border-gray-300 rounded-lg mb-2">
                         
                     </div>
 
@@ -421,7 +421,7 @@
                 </button>
                 <button id="submitReceiptBtn"
                     class="flex-1 bg-green-700 text-white p-2 rounded-lg hover:bg-green-600 transition font-medium">
-                    <i class="fas fa-check mr-1"></i>Submit
+                    <i class="fas fa-check mr-1"></i>Ok
                 </button>
             </div>
         </div>
@@ -667,7 +667,7 @@
         let cart = [];
         let currentCategory = 'all';
         let currentPaymentMethod = 'cash';
-        // let discountPercent = 0;
+        let discountPercent = 0;
 
         // DOM Elements
         const productSearch = document.getElementById('productSearch');
@@ -675,7 +675,7 @@
         const cartItems = document.getElementById('cartItems');
         const subtotalEl = document.getElementById('subtotal');
         // const taxEl = document.getElementById('tax');
-        // const discountEl = document.getElementById('discount');
+        const discountEl = document.getElementById('discount');
         const totalEl = document.getElementById('total');
         const processPaymentBtn = document.getElementById('processPayment');
         const paymentModal = document.getElementById('paymentModal');
@@ -803,12 +803,12 @@
         // Update totals
         function updateTotals() {
             const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            // const discountAmount = subtotal * (discountPercent / 100);
-            // const tax = (subtotal - discountAmount) * 0.085;
-            const total = subtotal;  //- discountAmount
+            const discountAmount = subtotal * (discountPercent / 100);
+            const tax = (subtotal - discountAmount) * 0.085;
+            const total = subtotal- discountAmount;
 
             subtotalEl.textContent = `₹${subtotal.toFixed(2)}`;
-            // discountEl.textContent = `-₹${discountAmount.toFixed(2)}`;
+            discountEl.textContent = `-₹${discountAmount.toFixed(2)}`;
             // taxEl.textContent = `₹${tax.toFixed(2)}`;
             totalEl.textContent = `₹${total.toFixed(2)}`;
         }
@@ -816,7 +816,7 @@
         // Store cart, totals, and customer details temporarily for submission
         let tempCart = [];
         let tempSubtotal = 0;
-        // let tempDiscountAmount = 0;
+        let tempDiscountAmount = 0;
         let tempCustomerName = '';
         let tempCustomerMobile = '';
 
@@ -854,59 +854,121 @@
             }, 200);
         }
 
-        // Show receipt
         function showReceipt() {
-            const receiptContent = document.getElementById('receiptContent');
-            const now = new Date();
-            const receiptNumber = 'R' + Date.now().toString().slice(-6);
-            const orderId = 'ORD' + Date.now().toString().slice(-3);
+    const receiptContent = document.getElementById('receiptContent');
+    const now = new Date();
+    const receiptNumber = 'R' + Date.now().toString().slice(-6);
+    const orderId = 'ORD' + Date.now().toString().slice(-3);
 
-            const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-            // const discountAmount = subtotal * (discountPercent / 100);
-            // const tax = (subtotal - discountAmount) * 0.085;
-            const total = subtotal ; //- discountAmount
+    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const discountAmount = subtotal * (discountPercent / 100);
+    const tax = (subtotal - discountAmount) * 0.085;
+    const total = subtotal - discountAmount;
 
-            const customerName = document.getElementById('customerName').value || 'N/A';
-            const customerMobile = document.getElementById('customerMobile').value || 'N/A';
-            const tableNumber = document.getElementById('tableNumber').value || 'N/A';
+    const customerName = document.getElementById('customerName').value || 'N/A';
+    const customerMobile = document.getElementById('customerMobile').value || 'N/A';
+    const tableNumber = document.getElementById('tableNumber').value || 'N/A';
 
-            const receiptHTML = `
-                <div class="text-center border-b pb-2 mb-2">
-                    <h2 class="font-bold text-base">The Home Bakery</h2>
-                    <p class="text-xs">by Anjali</p>
+    const receiptHTML = `
+        <div class="text-center border-b pb-2 mb-2">
+            <img src="/logoImage/logo-without-bg.png" alt="The Home Bakery Logo" style="max-width: 60mm; height: auto; margin-bottom: 3mm;">
+            <h1 class="font-bold text-base">The Home Bakery</h1>
+            <p class="text-xs mb-8">by Anjali</p>
+            <p>G-004, Aldea Espanola Phase 6 & 7, </p>
+            <p>opp. Orchid Hotel, Mahalunge, Pune </p>
+            <p>Contact: 9537999898</p>
+        </div>
+        <div class="mb-2 text-xs">
+            <p><strong>Order ID:</strong> ${orderId}</p>
+            <p><strong>Receipt Number:</strong> ${receiptNumber}</p>
+            <p><strong>Date:</strong> ${now.toLocaleDateString()}</p>
+            <p><strong>Time:</strong> ${now.toLocaleTimeString()}</p>
+            <p><strong>Customer:</strong> ${customerName}</p>
+            <p><strong>Mobile:</strong> ${customerMobile}</p>
+            <p><strong>Table Number:</strong> ${tableNumber}</p>
+            <p><strong>Payment:</strong> ${currentPaymentMethod.toUpperCase()}</p>
+        </div>
+        <div class="border-t pt-1 mb-2 text-xs">
+            ${cart.map(item => `
+                <div class="flex justify-between py-0.5">
+                    <span>${item.name.substring(0, 20)} x ${item.quantity}</span>
+                    <span>&#8377;${(item.price * item.quantity).toFixed(2)}</span>
                 </div>
-                <div class="mb-2 text-xs">
-                    <p><strong>Order ID:</strong> ${orderId}</p>
-                    <p><strong>Receipt Number:</strong> ${receiptNumber}</p>
-                    <p><strong>Date:</strong> ${now.toLocaleDateString()}</p>
-                    <p><strong>Time:</strong> ${now.toLocaleTimeString()}</p>
-                    <p><strong>Customer:</strong> ${customerName}</p>
-                    <p><strong>Mobile:</strong> ${customerMobile}</p>
-                    <p><strong>Table Number:</strong> ${tableNumber}</p>
-                    <p><strong>Payment:</strong> ${currentPaymentMethod.toUpperCase()}</p>
-                </div>
-                <div class="border-t pt-1 mb-2 text-xs">
-                    ${cart.map(item => `
-                        <div class="flex justify-between py-0.5">
-                            <span>${item.name.substring(0, 20)} x ${item.quantity}</span>
-                            <span>&#8377;${(item.price * item.quantity).toFixed(2)}</span>
-                        </div>
-                    `).join('')}
-                </div>
-                <div class="border-t pt-1 text-xs">
-                    <div class="flex justify-between"><span>Subtotal:</span><span>&#8377;${subtotal.toFixed(2)}</span></div>
-                    <div class="flex justify-between font-bold border-t pt-1"><span>Total:</span><span>&#8377;${total.toFixed(2)}</span></div>
-                </div>
-                <div class="text-center mt-2 pt-2 border-t text-xs">
-                    <p>Thank you for choosing The Home Bakery!</p>
-                    <p>Have a sweet day!</p>
-                </div>
-            `;
+            `).join('')}
+        </div>
+        <div class="border-t pt-1 text-xs">
+            <div class="flex justify-between"><span>Subtotal:</span><span>&#8377;${subtotal.toFixed(2)}</span></div>
+            <div class="flex justify-between"><span>Discount:</span><span>-&#8377;${discountAmount.toFixed(2)}</span></div>
+            <div class="flex justify-between font-bold border-t pt-1"><span>Total:</span><span>&#8377;${total.toFixed(2)}</span></div>
+        </div>
+        <div class="text-center mt-2 pt-2 border-t text-xs">
+            <p>Thank you for choosing The Home Bakery!</p>
+            <p>Have a sweet day!</p>
+        </div>
+    `;
 
-            receiptContent.innerHTML = receiptHTML;
-            printArea.innerHTML = receiptHTML;
-            receiptModal.classList.add('show');
-        }
+    receiptContent.innerHTML = receiptHTML;
+    printArea.innerHTML = receiptHTML;
+    receiptModal.classList.add('show');
+}
+
+        // Show receipt
+        // function showReceipt() {
+        //     const receiptContent = document.getElementById('receiptContent');
+        //     const now = new Date();
+        //     const receiptNumber = 'R' + Date.now().toString().slice(-6);
+        //     const orderId = 'ORD' + Date.now().toString().slice(-3);
+
+        //     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        //     const discountAmount = subtotal * (discountPercent / 100);
+        //     const tax = (subtotal - discountAmount) * 0.085;
+        //     const total = subtotal - discountAmount;
+
+        //     const customerName = document.getElementById('customerName').value || 'N/A';
+        //     const customerMobile = document.getElementById('customerMobile').value || 'N/A';
+        //     const tableNumber = document.getElementById('tableNumber').value || 'N/A';
+
+        //     const receiptHTML = `
+        //         <div class="text-center border-b pb-2 mb-2">
+        //             <h1 class="font-bold text-base">The Home Bakery</h1>
+        //             <p class="text-xs mb-8">by Anjali</p>
+        //             <p>G-004, Aldea Espanola Phase 6 & 7, </p>
+        //             <p>opp. Orchid Hotel, Mahalunge, Pune </p>
+        //             <p>Contact: 9537999898</p>
+        //         </div>
+        //         <div class="mb-2 text-xs">
+        //             <p><strong>Order ID:</strong> ${orderId}</p>
+        //             <p><strong>Receipt Number:</strong> ${receiptNumber}</p>
+        //             <p><strong>Date:</strong> ${now.toLocaleDateString()}</p>
+        //             <p><strong>Time:</strong> ${now.toLocaleTimeString()}</p>
+        //             <p><strong>Customer:</strong> ${customerName}</p>
+        //             <p><strong>Mobile:</strong> ${customerMobile}</p>
+        //             <p><strong>Table Number:</strong> ${tableNumber}</p>
+        //             <p><strong>Payment:</strong> ${currentPaymentMethod.toUpperCase()}</p>
+        //         </div>
+        //         <div class="border-t pt-1 mb-2 text-xs">
+        //             ${cart.map(item => `
+        //                 <div class="flex justify-between py-0.5">
+        //                     <span>${item.name.substring(0, 20)} x ${item.quantity}</span>
+        //                     <span>&#8377;${(item.price * item.quantity).toFixed(2)}</span>
+        //                 </div>
+        //             `).join('')}
+        //         </div>
+        //         <div class="border-t pt-1 text-xs">
+        //             <div class="flex justify-between"><span>Subtotal:</span><span>&#8377;${subtotal.toFixed(2)}</span></div>
+        //             <div class="flex justify-between"><span>Discount:</span><span>-&#8377;${discountAmount.toFixed(2)}</span></div>
+        //             <div class="flex justify-between font-bold border-t pt-1"><span>Total:</span><span>&#8377;${total.toFixed(2)}</span></div>
+        //         </div>
+        //         <div class="text-center mt-2 pt-2 border-t text-xs">
+        //             <p>Thank you for choosing The Home Bakery!</p>
+        //             <p>Have a sweet day!</p>
+        //         </div>
+        //     `;
+
+        //     receiptContent.innerHTML = receiptHTML;
+        //     printArea.innerHTML = receiptHTML;
+        //     receiptModal.classList.add('show');
+        // }
 
         // Clear cart
         function clearCart() {
