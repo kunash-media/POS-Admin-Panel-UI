@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPI QR Code Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-md w-full">
+        <h1 class="text-2xl font-bold text-center mb-6 text-gray-800">UPI QR Code Generator</h1>
+        
+        <!-- Inputs -->
+        <div class="space-y-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payee UPI ID</label>
+                <input type="text" id="upiId" value="sumerkhan@upi" readonly class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Payee Name</label>
+                <input type="text" id="payeeName" value="Sumer Khan" readonly class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount (INR)</label>
+                <input type="number" id="amount" placeholder="10.00" step="0.01" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+        </div>
+        
+        <button id="generateBtn" class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+            Pay
+        </button>
+    </div>
+
+    <!-- QR Modal -->
+    <div id="qrModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4 text-center">Scan to Pay</h2>
+            <div id="qrCode" class="flex justify-center mb-4"></div>
+            <p class="text-sm text-gray-600 text-center mb-4">1. Scan the QR code with any UPI app (e.g., Google Pay, PhonePe).<br>2. Complete the payment in the app.<br>3. Enter the transaction ID (optional) and confirm below.</p>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">UPI Transaction ID (Optional)</label>
+                <input type="text" id="transactionId" placeholder="Enter UPI Transaction ID" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <button id="confirmPaymentBtn" class="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium mb-2">
+                I Have Completed the Payment
+            </button>
+            <button id="closeQrModal" class="w-full bg-gray-300 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500 font-medium">
+                Close
+            </button>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full text-center">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Confirm Payment</h2>
+            <p class="text-sm text-gray-600 mb-4">Have you completed the payment via your UPI app? Clicking "Confirm" will proceed with order processing. Please ensure the payment is complete.</p>
+            <div class="flex space-x-4">
+                <button id="proceedConfirm" class="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-green-500 font-medium">
+                    Confirm
+                </button>
+                <button id="cancelConfirm" class="w-full bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Overlay -->
+    <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full text-center">
+            <h2 class="text-xl font-semibold text-green-600 mb-4">Payment Successful!</h2>
+            <p class="text-sm text-gray-600 mb-4">Thank you for your payment. Your order will be processed shortly.</p>
+            <button id="closeSuccessModal" class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium">
+                OK
+            </button>
+        </div>
+    </div>
+        
+    <script>
+        // Check if QRCode library is loaded
+        if (typeof QRCode === 'undefined') {
+            alert('QRCode library failed to load. Please check your internet connection or try again later.');
+        }
+
+        // Check if confetti is loaded
+        if (typeof confetti === 'undefined') {
+            alert('Confetti library failed to load. Please check your internet connection or try again later.');
+        }
+
+        const generateBtn = document.getElementById('generateBtn');
+        const qrModal = document.getElementById('qrModal');
+        const closeQrModal = document.getElementById('closeQrModal');
+        const confirmPaymentBtn = document.getElementById('confirmPaymentBtn');
+        const confirmModal = document.getElementById('confirmModal');
+        const proceedConfirm = document.getElementById('proceedConfirm');
+        const cancelConfirm = document.getElementById('cancelConfirm');
+        const successModal = document.getElementById('successModal');
+        const closeSuccessModal = document.getElementById('closeSuccessModal');
+
+        generateBtn.addEventListener('click', function() {
+            const upiId = document.getElementById('upiId').value.trim();
+            const payeeName = document.getElementById('payeeName').value.trim();
+            const amount = parseFloat(document.getElementById('amount').value) || 0;
+            
+            if (!upiId || !payeeName || amount <= 0) {
+                alert('Please enter a valid amount.');
+                return;
+            }
+            
+            // Construct UPI URI
+            const upiUri = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${amount}&cu=INR`;
+            
+            // Clear previous QR code
+            const qrContainer = document.getElementById('qrCode');
+            qrContainer.innerHTML = '';
+
+            // Generate QR
+            try {
+                new QRCode(qrContainer, {
+                    text: upiUri,
+                    width: 200,
+                    height: 200,
+                    colorDark: '#000000',
+                    colorLight: '#FFFFFF',
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+                qrModal.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error generating QR code:', error);
+                alert('Failed to generate QR code. Please try again.');
+            }
+        });
+
+        // Close QR modal
+        closeQrModal.addEventListener('click', function() {
+            qrModal.classList.add('hidden');
+        });
+
+        // Close QR modal on backdrop click
+        qrModal.addEventListener('click', function(e) {
+            if (e.target === qrModal) {
+                qrModal.classList.add('hidden');
+            }
+        });
+
+        // Show confirmation modal
+        confirmPaymentBtn.addEventListener('click', function() {
+            confirmModal.classList.remove('hidden');
+        });
+
+        // Proceed with confirmation
+        proceedConfirm.addEventListener('click', function() {
+            confirmModal.classList.add('hidden');
+            qrModal.classList.add('hidden');
+            successModal.classList.remove('hidden');
+
+            // Trigger confetti
+            confetti({
+                particleCount: 150,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#22c55e', '#ef4444', '#3b82f6']
+            });
+
+            // Log transaction ID (if provided) and trigger order creation API
+            const transactionId = document.getElementById('transactionId').value.trim();
+            const amount = document.getElementById('amount').value;
+            console.log('Transaction ID:', transactionId || 'Not provided');
+            // Example API call (uncomment and adjust for your backend):
+            // fetch('https://your-backend.com/api/create-order', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ 
+            //         amount: amount, 
+            //         upiId: 'sumerkhan@upi', 
+            //         transactionId: transactionId || 'Not provided',
+            //         status: 'completed' 
+            //     })
+            // }).then(response => response.json())
+            //   .then(data => console.log('Order created:', data))
+            //   .catch(error => console.error('Error creating order:', error));
+        });
+
+        // Cancel confirmation
+        cancelConfirm.addEventListener('click', function() {
+            confirmModal.classList.add('hidden');
+        });
+
+        // Close confirmation modal on backdrop click
+        confirmModal.addEventListener('click', function(e) {
+            if (e.target === confirmModal) {
+                confirmModal.classList.add('hidden');
+            }
+        });
+
+        // Close success modal
+        closeSuccessModal.addEventListener('click', function() {
+            successModal.classList.add('hidden');
+            document.getElementById('amount').value = '';
+            document.getElementById('transactionId').value = '';
+        });
+
+        // Close success modal on backdrop click
+        successModal.addEventListener('click', function(e) {
+            if (e.target === successModal) {
+                successModal.classList.add('hidden');
+                document.getElementById('amount').value = '';
+                document.getElementById('transactionId').value = '';
+            }
+        });
+    </script>
+</body>
+</html>
